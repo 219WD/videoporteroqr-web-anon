@@ -1,142 +1,99 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
-import { api } from '../lib/api';
-import { saveFlowSession } from '../lib/session';
-import { Loader2, ScanSearch } from 'lucide-react';
-
-type HostInfo = {
-  id: string;
-  name: string;
-  email?: string | null;
-  qrCode?: string | null;
-};
-
-function normalizeText(value: string) {
-  return value.trim().replace(/\s+/g, ' ');
-}
+import { Textarea } from '../components/ui/textarea';
+import { Loader2, Send } from 'lucide-react';
+import { useQrPage } from '../hooks/useQrPage';
 
 export function QrPage() {
-  const { code } = useParams();
-  const navigate = useNavigate();
-  const [host, setHost] = useState<HostInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [guestFullName, setGuestFullName] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const qrCode = useMemo(() => code || '', [code]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadHost() {
-      if (!qrCode) {
-        setError('Falta el código QR');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const response = await api.get(`/auth/host-by-qr/${encodeURIComponent(qrCode)}`);
-        if (!active) return;
-        setHost(response.data?.host || null);
-      } catch (err: any) {
-        if (!active) return;
-        setError(err.response?.data?.error || 'No pudimos encontrar al anfitrión');
-      } finally {
-        if (active) setLoading(false);
-      }
+  const {
+    props: {
+      loading,
+      host,
+      guestFullName,
+      firstMessage,
+      startFlow,
+      error,
+      starting,
+    },
+    methods: {
+      setGuestFullName,
+      setFirstMessage,
     }
-
-    loadHost();
-
-    return () => {
-      active = false;
-    };
-  }, [qrCode]);
-
-  async function startFlow() {
-    const fullName = normalizeText(guestFullName);
-
-    if (!fullName) {
-      setError('Escribí tu nombre completo');
-      return;
-    }
-
-    if (!host?.qrCode) {
-      setError('No pudimos leer ese código');
-      return;
-    }
-
-    try {
-      setError(null);
-      const response = await api.post('/flows/start', {
-        qrCode,
-        actionType: 'message',
-        guestName: fullName,
-        guestFullName: fullName,
-        isAnonymous: true,
-      });
-
-      saveFlowSession({
-        callId: response.data.callId as string,
-        guestToken: response.data.guestToken as string,
-        guestFullName: fullName,
-        qrCode,
-        hostName: response.data.hostName || host?.name || 'Anfitrión',
-        hostId: String(response.data.hostId || host?.id || ''),
-        mode: 'chat',
-        expiresAt: null,
-      });
-
-      navigate(`/chat/${response.data.callId}`, { replace: true });
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'No pudimos iniciar la conversación');
-    }
-  }
+  } = useQrPage()
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-[720px] flex-col gap-4 px-4 py-4 sm:px-5">
-      <Card className="overflow-hidden">
-        <CardHeader className="bg-gradient-to-b from-[#7d1522] to-[#6b101d] text-white">
-          <Badge className="bg-white/10 text-white">Acceso anónimo</Badge>
-          <CardTitle className="text-[28px] text-white">
-            {loading ? 'Buscando anfitrión...' : host?.name || 'Anfitrión no encontrado'}
-          </CardTitle>
-          <CardDescription className="text-white/80">
-            {loading
-              ? 'Estamos preparando tu acceso.'
-              : 'Escribí tu nombre completo para continuar.'}
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-4 p-5">
-          <label className="flex flex-col gap-2 text-sm font-bold text-zinc-800">
-            <span>Nombre completo</span>
-            <Input
-              value={guestFullName}
-              onChange={(event) => setGuestFullName(event.target.value)}
-              placeholder="Nombre y apellido"
-              autoComplete="name"
-            />
-          </label>
-
-          <Button type="button" onClick={startFlow} disabled={loading} className="w-full">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanSearch className="h-4 w-4" />}
-            Entrar al chat
-          </Button>
-
-          {error ? <div className="rounded-2xl border border-[#f4c4c4] bg-[#fdecec] px-4 py-3 text-sm text-[#b3261e]">{error}</div> : null}
-          {host ? (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-              Vas a contactar a {host.name}. Desde el chat podés iniciar una videollamada.
+    <main className="min-h-screen bg-white px-4 py-6">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[430px] flex-col justify-center">
+        <div className="rounded-[32px] border border-zinc-200 bg-white px-5 py-6 shadow-[0_18px_50px_rgba(17,17,17,0.08)] sm:px-6 sm:py-7">
+          <div className="flex flex-col items-center gap-5">
+            <div className="flex w-fit items-center justify-center gap-3">
+              <img
+                src="/splash/logotipo-color.png"
+                alt="Albiero Seguridad"
+                className="h-32 w-32 select-none object-contain sm:h-36 sm:w-36"
+                draggable={false}
+              />
             </div>
-          ) : null}
-        </CardContent>
-      </Card>
+
+            <div className="text-center">
+              <h1 className="text-[26px] font-semibold tracking-[0.22em] text-black sm:text-[28px]">
+                TIMBRE QR
+              </h1>
+              <p className="mt-3 text-[14px] leading-6 text-zinc-700 sm:text-[15px]">
+                Dejanos tu nombre y tu mensaje
+              </p>
+            </div>
+
+            <div className="w-full rounded-2xl border border-zinc-200 bg-[#fafafa] px-4 py-3 text-center text-sm text-zinc-700">
+              {loading
+                ? 'Buscando anfitrion...'
+                : host?.name
+                  ? `Vas a escribirle a ${host.name}`
+                  : 'No encontramos ese QR'}
+            </div>
+
+            <div className="w-full space-y-4">
+              <label className="flex flex-col gap-2 text-sm font-medium text-zinc-700">
+                <span>Tu nombre</span>
+                <Input
+                  value={guestFullName}
+                  onChange={(event) => setGuestFullName(event.target.value)}
+                  placeholder="Escribi tu nombre"
+                  autoComplete="name"
+                  className="h-12 rounded-2xl border-zinc-200 bg-white px-4 text-[15px] shadow-sm placeholder:text-zinc-400 focus:border-[#d32f2f] focus:ring-4 focus:ring-[#d32f2f]/10"
+                />
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm font-medium text-zinc-700">
+                <span>Mensaje</span>
+                <Textarea
+                  value={firstMessage}
+                  onChange={(event) => setFirstMessage(event.target.value)}
+                  placeholder="Escribi tu mensaje"
+                  rows={5}
+                  className="min-h-[140px] rounded-2xl border-zinc-200 bg-white px-4 py-3 text-[15px] shadow-sm placeholder:text-zinc-400 focus:border-[#d32f2f] focus:ring-4 focus:ring-[#d32f2f]/10"
+                />
+              </label>
+
+              <Button
+                type="button"
+                onClick={startFlow}
+                disabled={loading || starting}
+                className="h-14 w-full rounded-2xl bg-[#d32f2f] text-[15px] font-semibold text-white shadow-[0_14px_30px_rgba(211,47,47,0.28)] transition hover:bg-[#bf2828] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {loading || starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                ENVIAR
+              </Button>
+            </div>
+
+            {error ? (
+              <div className="w-full rounded-2xl border border-[#f4c4c4] bg-[#fdecec] px-4 py-3 text-sm text-[#b3261e]">
+                {error}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

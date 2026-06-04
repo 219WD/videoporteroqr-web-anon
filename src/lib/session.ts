@@ -1,9 +1,10 @@
-export type AnonymousMode = 'chat' | 'call';
+export type AnonymousMode = 'chat';
 
-export type AnonymousFlowSession = {
-  callId: string;
+export type AnonymousChatSession = {
+  conversationId: string;
   guestToken: string;
   guestFullName: string;
+  initialMessage?: string;
   qrCode: string;
   hostName: string;
   hostId: string;
@@ -15,13 +16,13 @@ const STORAGE_KEY = 'anon-flow-session';
 const GUEST_TOKEN_KEY = 'anon-flow-guest-token';
 const GUEST_NAME_KEY = 'anon-flow-guest-name';
 
-export function saveFlowSession(session: AnonymousFlowSession) {
+export function saveChatSession(session: AnonymousChatSession) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   localStorage.setItem(GUEST_TOKEN_KEY, session.guestToken);
   localStorage.setItem(GUEST_NAME_KEY, session.guestFullName);
 }
 
-export function loadFlowSession(): AnonymousFlowSession | null {
+export function loadChatSession(): AnonymousChatSession | null {
   const raw = localStorage.getItem(STORAGE_KEY);
 
   if (!raw) {
@@ -29,13 +30,13 @@ export function loadFlowSession(): AnonymousFlowSession | null {
   }
 
   try {
-    return JSON.parse(raw) as AnonymousFlowSession;
+    return JSON.parse(raw) as AnonymousChatSession;
   } catch {
     return null;
   }
 }
 
-export function clearFlowSession() {
+export function clearChatSession() {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(GUEST_TOKEN_KEY);
   localStorage.removeItem(GUEST_NAME_KEY);

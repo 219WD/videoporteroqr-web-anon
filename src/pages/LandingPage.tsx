@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BadgeInfo, ScanLine, MessageCircleMore, Video } from 'lucide-react';
+import { ArrowRight, BadgeInfo, ScanLine, MessageCircleMore } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -25,11 +25,7 @@ export function LandingPage() {
             </div>
             <div className="flex items-center gap-2">
               <MessageCircleMore className="h-4 w-4 text-[#7d1522]" />
-              Primero el chat. La videollamada es opcional.
-            </div>
-            <div className="flex items-center gap-2">
-              <Video className="h-4 w-4 text-[#7d1522]" />
-              La conversación se cierra automáticamente a los 15 minutos.
+              Todo el flujo queda en chat.
             </div>
           </div>
 

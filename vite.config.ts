@@ -9,6 +9,6 @@ export default defineConfig({
     port: 5173,
   },
   preview: {
-    allowedHosts: ['.railway.app', '.vercel.app']
+    allowedHosts: ['.railway.app']
   },
 });
