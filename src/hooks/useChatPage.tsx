@@ -64,17 +64,20 @@ export const useChatPage = () => {
   const [guestName, setGuestName] = useState('Visitante');
   const [hostId, setHostId] = useState('');
   const [hostName, setHostName] = useState('Conversación');
+  const [hostDisplayName, setHostDisplayName] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [composer, setComposer] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [visitorTyping, setVisitorTyping] = useState(false);
   const [conversationTimeoutAt, setConversationTimeoutAt] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [loading, setLoading] = useState(true);
-  const title = hostName;
+  const title = hostDisplayName || hostName;
   const pageVisibleRef = useRef<boolean>(document.visibilityState === 'visible');
   const deliveredMessageIdsRef = useRef(new Set<string>());
   const readMessageIdsRef = useRef(new Set<string>());
+  const typingStopTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -181,6 +184,7 @@ export const useChatPage = () => {
       const nextGuestName = hydratedConversation.guestName || payload?.guestName;
       const nextHostId = hydratedConversation.hostId || hydratedHost.id || payload?.hostId;
       const nextHostName = hydratedHost.name || payload?.host?.name || payload?.hostName;
+      const nextHostDisplayName = hydratedHost.visitorDisplayName || payload?.host?.visitorDisplayName;
       const expireAt = getExpireAtFromPayload(payload);
 
       if (nextGuestName) {
@@ -193,6 +197,9 @@ export const useChatPage = () => {
 
       if (nextHostName) {
         setHostName(nextHostName);
+      }
+      if (nextHostDisplayName) {
+        setHostDisplayName(nextHostDisplayName);
       }
 
       if (expireAt) {
@@ -240,6 +247,7 @@ export const useChatPage = () => {
       const nextGuestName = hydratedConversation.guestName || payload?.guestName;
       const nextHostId = hydratedConversation.hostId || hydratedHost.id || payload?.hostId;
       const nextHostName = hydratedHost.name || payload?.host?.name || payload?.hostName;
+      const nextHostDisplayName = hydratedHost.visitorDisplayName || payload?.host?.visitorDisplayName;
 
       if (nextGuestName) {
         setGuestName(nextGuestName);
@@ -251,6 +259,9 @@ export const useChatPage = () => {
 
       if (nextHostName) {
         setHostName(nextHostName);
+      }
+      if (nextHostDisplayName) {
+        setHostDisplayName(nextHostDisplayName);
       }
 
       log.info('chat:message:new', {
@@ -312,9 +323,15 @@ export const useChatPage = () => {
       );
     };
 
+    const handleTyping = (payload: any) => {
+      if (payload?.conversationId !== conversationId || payload?.role !== 'host') return;
+      setVisitorTyping(payload.isTyping === true);
+    };
+
     currentSocket.on(CHAT_EVENTS.CONVERSATION_STATE, handleConversationState);
     currentSocket.on(CHAT_EVENTS.MESSAGE_NEW, handleMessageNew);
     currentSocket.on(CHAT_EVENTS.MESSAGE_STATUS, handleMessageStatus);
+    currentSocket.on(CHAT_EVENTS.TYPING, handleTyping);
 
     currentSocket.emit(
       CHAT_EVENTS.JOIN,
@@ -334,6 +351,7 @@ export const useChatPage = () => {
         const nextGuestName = hydratedConversation.guestName || response?.guestName;
         const nextHostId = hydratedConversation.hostId || hydratedHost.id || response?.hostId;
         const nextHostName = hydratedHost.name || response?.host?.name || response?.hostName;
+        const nextHostDisplayName = hydratedHost.visitorDisplayName || response?.host?.visitorDisplayName;
         const expireAt = getExpireAtFromPayload(response);
 
         if (nextGuestName) {
@@ -346,6 +364,9 @@ export const useChatPage = () => {
 
         if (nextHostName) {
           setHostName(nextHostName);
+        }
+        if (nextHostDisplayName) {
+          setHostDisplayName(nextHostDisplayName);
         }
 
         if (expireAt) {
@@ -368,6 +389,9 @@ export const useChatPage = () => {
       currentSocket.off(CHAT_EVENTS.CONVERSATION_STATE, handleConversationState);
       currentSocket.off(CHAT_EVENTS.MESSAGE_NEW, handleMessageNew);
       currentSocket.off(CHAT_EVENTS.MESSAGE_STATUS, handleMessageStatus);
+      currentSocket.off(CHAT_EVENTS.TYPING, handleTyping);
+      currentSocket.emit(CHAT_EVENTS.TYPING, { conversationId, role: 'guest', isTyping: false });
+      if (typingStopTimerRef.current) window.clearTimeout(typingStopTimerRef.current);
     };
   }, [conversationId, navigate, socket]);
 
@@ -412,6 +436,7 @@ export const useChatPage = () => {
 
             return [...current, nextMessage];
           });
+        currentSocket.emit(CHAT_EVENTS.TYPING, { conversationId, role: 'guest', isTyping: false });
         }
 
         const expireAt = getExpireAtFromPayload(response);
@@ -420,6 +445,29 @@ export const useChatPage = () => {
         }
       },
     );
+  }
+
+  function handleComposerChange(value: string) {
+    setComposer(value);
+    const currentSocket = connectSocket();
+    currentSocket.emit(CHAT_EVENTS.TYPING, {
+      conversationId,
+      role: 'guest',
+      isTyping: Boolean(value.trim()),
+    });
+    if (typingStopTimerRef.current) window.clearTimeout(typingStopTimerRef.current);
+    if (value.trim()) {
+      typingStopTimerRef.current = window.setTimeout(() => {
+        currentSocket.emit(CHAT_EVENTS.TYPING, { conversationId, role: 'guest', isTyping: false });
+      }, 800);
+    }
+  }
+
+  function goBackFromChat() {
+    if (composer.trim() && !window.confirm('El texto escrito todavía no fue enviado y se perderá. ¿Querés salir?')) {
+      return;
+    }
+    navigate(-1);
   }
 
   const filteredMessages = useMemo(() => {
@@ -442,12 +490,15 @@ export const useChatPage = () => {
       loading,
       sending,
       timeLeftMs,
-      title,
+    title: hostDisplayName || title,
+      visitorTyping,
     },
     methods: {
       formatTimeLeft,
       keyForMessage,
       navigate,
+      goBackFromChat,
+      handleComposerChange,
       sendMessage,
       setComposer,
     },

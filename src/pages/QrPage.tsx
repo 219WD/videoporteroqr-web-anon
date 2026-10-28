@@ -20,6 +20,8 @@ export function QrPage() {
       setFirstMessage,
     }
   } = useQrPage()
+  const visitorUnavailable = Boolean(host && host.effectiveVisitorStatus && host.effectiveVisitorStatus !== 'available');
+  const visitorStatusLabel = host?.effectiveVisitorStatus === 'off_hours' ? 'Fuera de horario' : 'No disponible';
 
   return (
     <main className="min-h-screen bg-white px-4 py-6">
@@ -42,15 +44,18 @@ export function QrPage() {
               <p className="mt-3 text-[14px] leading-6 text-zinc-700 sm:text-[15px]">
                 Dejanos tu nombre y tu mensaje
               </p>
+              {host?.visitorWelcomeMessage ? <p className="mt-1 text-center text-[13px] leading-5 text-zinc-500">{host.visitorWelcomeMessage}</p> : null}
             </div>
 
             <div className="w-full rounded-2xl border border-zinc-200 bg-[#fafafa] px-4 py-3 text-center text-sm text-zinc-700">
               {loading
                 ? 'Buscando anfitrion...'
                 : host?.name
-                  ? `Vas a escribirle a ${host.name}`
+                  ? `Estás contactando a ${host.visitorDisplayName || host.name}${host.effectiveVisitorStatus === 'off_hours' ? ' · Fuera de horario' : host.effectiveVisitorStatus === 'unavailable' ? ' · No disponible' : ''}`
                   : 'No encontramos ese QR'}
             </div>
+
+            {visitorUnavailable ? <div className="w-full rounded-2xl border border-[#f0caca] bg-[#fff3f3] px-4 py-3 text-center text-sm font-medium text-[#9b3438]">{visitorStatusLabel}. No se pueden iniciar conversaciones en este momento.</div> : null}
 
             <div className="w-full space-y-4">
               <label className="flex flex-col gap-2 text-sm font-medium text-zinc-700">
@@ -78,11 +83,11 @@ export function QrPage() {
               <Button
                 type="button"
                 onClick={startFlow}
-                disabled={loading || starting}
+                disabled={loading || starting || visitorUnavailable}
                 className="h-14 w-full rounded-2xl bg-[#d32f2f] text-[15px] font-semibold text-white shadow-[0_14px_30px_rgba(211,47,47,0.28)] transition hover:bg-[#bf2828] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading || starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                ENVIAR
+                {visitorUnavailable ? 'NO DISPONIBLE' : 'ENVIAR'}
               </Button>
             </div>
 

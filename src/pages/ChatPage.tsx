@@ -1,4 +1,5 @@
-import { ArrowLeft, Clock3, Send } from "lucide-react";
+import { ArrowLeft, Clock3, Send, Timer } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { useChatPage } from "../hooks/useChatPage";
@@ -15,15 +16,23 @@ export function ChatPage() {
       sending,
       timeLeftMs,
       title,
+      visitorTyping,
     },
     methods: {
       formatTimeLeft,
       keyForMessage,
       navigate,
+      goBackFromChat,
       sendMessage,
-      setComposer,
+      handleComposerChange,
     },
   } = useChatPage();
+  const messagesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = messagesRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  }, [filteredMessages.length, visitorTyping]);
 
   return (
     <main className="min-h-screen bg-white px-4 py-6">
@@ -53,7 +62,7 @@ export function ChatPage() {
               <Button
                 variant="secondary"
                 size="icon"
-                onClick={() => navigate(-1)}
+                onClick={goBackFromChat}
                 className="mt-0.5 shrink-0 rounded-full"
                 aria-label="Volver"
               >
@@ -85,8 +94,15 @@ export function ChatPage() {
           </div>
 
           <div className="flex min-h-[520px] flex-col">
-            <div className="flex-1 px-4 py-4 sm:px-5">
-              <div className="flex h-full min-h-[360px] flex-col justify-end gap-3">
+            {expired ? (
+              <div className="mx-4 mt-3 flex items-start gap-3 rounded-2xl border border-[#f3c5be] bg-[#fff4f2] px-4 py-3 text-[#9b2c2c] sm:mx-5">
+                <Timer className="mt-0.5 h-5 w-5 shrink-0" />
+                <div><p className="text-sm font-semibold">Conversación vencida</p><p className="text-xs text-[#7a3e3e]">Ya no se pueden enviar nuevos mensajes.</p></div>
+              </div>
+            ) : null}
+
+            <div ref={messagesRef} className="max-h-[52vh] flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+              <div className="flex min-h-[360px] flex-col justify-end gap-3">
                 {filteredMessages.map((item) => {
                   const mine = item.sender === "guest";
                   const deliveryMark =
@@ -139,11 +155,17 @@ export function ChatPage() {
               </div>
             </div>
 
+            {visitorTyping ? (
+              <div className="flex items-center gap-2 px-5 pb-2 text-xs italic text-zinc-500">
+                <span className="h-2 w-2 rounded-full bg-[#d32f2f]" /> El anfitrión está escribiendo…
+              </div>
+            ) : null}
+
             <div className="border-t border-zinc-200 bg-white p-4">
               <div className="flex gap-3">
                 <Textarea
                   value={composer}
-                  onChange={(event) => setComposer(event.target.value)}
+                  onChange={(event) => handleComposerChange(event.target.value)}
                   placeholder={
                     loading
                       ? "Cargando conversación..."

@@ -12,6 +12,11 @@ type HostInfo = {
   name: string;
   email?: string | null;
   qrCode?: string | null;
+  visitorDisplayName?: string | null;
+  visitorWelcomeMessage?: string | null;
+  visitorStatus?: 'available' | 'off_hours' | 'unavailable';
+  effectiveVisitorStatus?: 'available' | 'off_hours' | 'unavailable';
+  visitorSchedule?: Array<{ day: number; enabled: boolean; start: string; end: string }>;
 };
 
 function normalizeText(value: string) {
@@ -91,6 +96,11 @@ export const useQrPage = () => {
 
     if (!host?.qrCode) {
       setError('No pudimos leer ese QR');
+      return;
+    }
+
+    if (host.effectiveVisitorStatus && host.effectiveVisitorStatus !== 'available') {
+      setError(host.effectiveVisitorStatus === 'off_hours' ? 'Este timbre está fuera de horario' : 'Este timbre no está disponible en este momento');
       return;
     }
 
