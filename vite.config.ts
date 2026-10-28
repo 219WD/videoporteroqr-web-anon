@@ -7,8 +7,6 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
-  },
-  server: {
     allowedHosts: ['192.168.1.13', 'localhost', '127.0.0.1']
   },
   preview: {
